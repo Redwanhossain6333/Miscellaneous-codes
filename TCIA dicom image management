@@ -1,0 +1,111 @@
+##### Part 1: Nerge all the dicom images with their ID from various folders
+import os
+import pydicom
+from shutil import copyfile
+
+def copy_and_rename_dicom_files(root_dir, output_folder):
+    # Dictionary to store counts for each Patient ID
+    patient_id_counts = {}
+
+    # Iterate through all files in the root directory and its subdirectories
+    for subdir_root, _, files in os.walk(root_dir):
+        for file_name in files:
+            if file_name.lower().endswith('.dcm'):
+                dicom_path = os.path.join(subdir_root, file_name)
+                
+                # Load the DICOM file to extract information
+                dicom_data = pydicom.read_file(dicom_path)
+                
+                # Extract 'Patient ID' from the DICOM file
+                patient_id = dicom_data.PatientID
+
+                # Increment the count for the current 'Patient ID' or set it to 1 if it doesn't exist
+                patient_id_counts[patient_id] = patient_id_counts.get(patient_id, 0) + 1
+
+                # Construct the new file name with the count
+                new_file_name = f'{patient_id}_{patient_id_counts[patient_id]}.dcm'
+
+                # Construct the new file path in the output folder
+                new_file_path = os.path.join(output_folder, new_file_name)
+                
+                # Copy the DICOM file to the output folder with the new name
+                copyfile(dicom_path, new_file_path)
+                
+                print(f'Copied and Renamed: {file_name} to {new_file_name}')
+
+# Specify the root directory containing DICOM files
+root_directory = "D:\TCIA images\manifest-1701247093466\Prostate-MRI-US-Biopsy"  # Update with the actual path to your root directory
+
+# Specify the output folder for copied and renamed DICOM files
+output_folder = "E:\managed"  # Update with the desired output path
+
+# Create the output folder if it doesn't exist
+os.makedirs(output_folder, exist_ok=True)
+
+# Call the function to copy and rename DICOM files
+copy_and_rename_dicom_files(root_directory, output_folder)
+
+
+
+
+########################################################################
+
+##### Part2: Classify image into types
+
+
+
+import os
+import pydicom
+import pandas as pd
+from shutil import copyfile
+
+def organize_dicom_files(root_dir, csv_path, output_root):
+    # Load the CSV file with 'seriesInstanceUID_US' and 'UCLA Score (Similar to PIRADS v2)'
+    csv_data = pd.read_csv(csv_path)  # Update with the actual path to your CSV file
+
+    # Create a dictionary to store the mapping of 'seriesInstanceUID_US' to 'UCLA Score (Similar to PIRADS v2)'
+    uid_to_score_mapping = dict(zip(csv_data['seriesInstanceUID_US'], csv_data['UCLA Score (Similar to PIRADS v2)']))
+
+    # Iterate through all files in the root directory and its subdirectories
+    for subdir_root, _, files in os.walk(root_dir):
+        for file_name in files:
+            if file_name.lower().endswith('.dcm'):
+                dicom_path = os.path.join(subdir_root, file_name)
+
+                # Load the DICOM file to extract information
+                dicom_data = pydicom.read_file(dicom_path)
+
+                # Extract 'Series Instance UID' from the DICOM file
+                series_instance_uid = dicom_data.SeriesInstanceUID
+
+                # Check if 'Series Instance UID' exists in the CSV file
+                if series_instance_uid in uid_to_score_mapping:
+                    # Get the 'UCLA Score (Similar to PIRADS v2)' for the current 'Series Instance UID'
+                    score = uid_to_score_mapping[series_instance_uid]
+
+                    # Construct the output folder path based on the 'UCLA Score (Similar to PIRADS v2)'
+                    output_folder = os.path.join(output_root, str(score))
+
+                    # Create the output folder if it doesn't exist
+                    os.makedirs(output_folder, exist_ok=True)
+
+                    # Copy the DICOM file to the output folder
+                    copyfile(dicom_path, os.path.join(output_folder, file_name))
+
+                    print(f'Copied: {file_name} to {output_folder}')
+
+# Specify the root directory containing DICOM files
+root_directory = "E:\managed"  # Update with the actual path to your root directory
+
+# Specify the path to the CSV file
+csv_file_path = "F:\Download Folder\Target-Data_2019-12-05.csv"  # Update with the actual path to your CSV file
+
+# Specify the root directory for organized DICOM files
+output_root_directory = "D://final managed"  # Update with the desired output path
+
+# Create the output root directory if it doesn't exist
+os.makedirs(output_root_directory, exist_ok=True)
+
+# Call the function to organize DICOM files
+organize_dicom_files(root_directory, csv_file_path, output_root_directory)
+
